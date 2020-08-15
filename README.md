@@ -270,6 +270,9 @@ The code lens provider implements all the steps of the algorithm described earli
 3. Ask GHC to produce the minimal import lists for this AST,
 4. For every import statement without a explicit import list, find out what's the minimal import list, and produce a code lens to display it together with a diff to graft the import list in.
 
+The provider takes the usual `LspFuncs` and `IdeState` argument, as well as a `CodeLensParams` value containing the URI
+for a file, and returns an IO action producing either an error or a list of code lenses for that file.
+
 ```haskell
 provider :: CodeLensProvider
 provider _lspFuncs          -- LSP functions, not used
