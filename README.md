@@ -304,6 +304,9 @@ provider _lspFuncs          -- LSP functions, not used
   = return $ Right (List [])
 ```
 
+Note how simple it is to retrieve the type checking artifacts for the module as well as a fully setup Ghc session for it,
+via the Ghcide rule "uses".
+
 The function `extractMinimalImports` extracts the import statements from the AST and generates the minimal import lists, implementing steps 2 and 3 of the algorithm.
 The details of the GHC api are not relevant to this tutorial, but the code is terse and easy to read:
 
