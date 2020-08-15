@@ -132,10 +132,11 @@ type RenameProvider = LSP.LspFuncs Config
 
 Providers are functions that receive some inputs and produce an IO computation that returns either an error or some result.
 
-All providers receive an `LSP.LspFuncs` value, which is a record of functions to perform LSP actions. Most providers can safely ignore this argument, since the LSP interaction is automatically managed by HLS.
-Some punctual use cases:
-- Progress reporting, for plugins that provide long running commands,
-- Custom user interactions via [message dialogs](https://microsoft.github.io/language-server-protocol/specification#window_showMessage).
+All providers receive an `LSP.LspFuncs` value, which is a record of functions to perform LSP actions. Most providers can safely ignore this argument, since the LSP interaction is automatically managed by HLS. It allows to do things like:
+- Query the LSP client capabilities
+- Manual progress reporting, for plugins that provide long running commands, like the Retrie plugin,
+- Custom user interactions via [message dialogs](https://microsoft.github.io/language-server-protocol/specification#window_showMessage). For instance, the Retrie plugin uses this to report skipped modules.
+
 
 The second argument plugins receive is `IdeState`, which encapsulates all the ghcide state including the build graph. This allows to request arbitrary rule results: ghcide will perform all the computations needed, parallelizing and reusing previous results as appropriate. Most rule types are defined in `Development.IDE.Core.RuleTypes` and are instances of the `RuleResult` type family. Some relevant rule types are:
 ```haskell
