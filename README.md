@@ -5,9 +5,9 @@ Along the way we will learn about HLS, its plugin model, and the relationship wi
 
 ## Introduction
 
-Writing plugins for HLS is a joy. Personally, I enjoy the ability to tap into the gigantic bag of goodies that is GHC, as well as the IDE integration thanks to LSP. 
+Writing plugins for HLS is a joy. Personally, I enjoy the ability to tap into the gigantic bag of goodies that is GHC, as well as the IDE integration thanks to LSP.
 
-In the last couple of months I have written a very diverse set of plugins and ghcide extensions including plugins to:
+In the last couple of months I have written various HLS and ghcide plugins for things like:
 
 1. Suggest imports for variables not in scope,
 2. Evaluate code in comments (a la doctest),
@@ -18,12 +18,16 @@ These plugins are small but meaningful steps towards a more polished IDE experie
 
 ## The task
 
-Here is the gist of the algorithm:
+Here is a visual statement of what we want to accomplish:
+
+   ![Imports code lens](imports.gif)
+
+And here is the gist of the algorithm:
 
 1. Request the type checking artefacts from the ghcide subsystem
 2. Extract the actual import lists from the type checked AST,
 3. Ask GHC to produce the minimal import lists for this AST,
-4. For every import statement without a explicit import list, find out what's the minimal import list, and produce a code lens to display it together with a diff to graft the import list in.
+4. For every import statement without a explicit import list, find out the minimal import list, and produce a code lens to display it together with a command to graft it on.
 
 ## Setup
 
@@ -32,11 +36,16 @@ To get started, let’s fetch the HLS repo and build it. You need at least GHC 8
 ```
 git clone --recursive http://github.com/haskell/haskell-language-server hls
 cd hls
+cabal update
 cabal build
 ```
 
-Take a note of the location of the `haskell-language-server` binary, then point your LSP client to it and reload or restart it. In VSCode this is done by editing the "Haskell Server Executable Path" setting. This way you can simply test your changes by rebuilding the binary and reloading your editor.
+If you run into any issues trying to build the binaries, the #haskell-ide-engine IRC chat room in
+Freenode is always a good place to ask for help.
 
+Once cabal is done take a note of the location of the `haskell-language-server` binary and point your LSP client to it. In VSCode this is done by editing the "Haskell Server Executable Path" setting. This way you can simply test your changes by reloading your editor after rebuilding the binary.
+
+![Imports code lens](settings.png)
 
 ## Anatomy of a plugin
 
@@ -55,7 +64,7 @@ data PluginDescriptor =
                    , pluginRenameProvider     :: !(Maybe RenameProvider)
                    }
 ```
-A plugin ha a unique id, a set of rules, a set of command handlers, and a set of "providers":
+A plugin has a unique id, a set of rules, a set of command handlers, and a set of "providers":
 
 * Rules add new targets to the Shake build graph defined in ghcide. 99% of plugins need not define any new rules.
 * Commands are an LSP abstraction for actions initiated by the user which are handled in the server. These actions can be long running and involve multiple modules. Many plugins define command handlers.
@@ -69,7 +78,9 @@ The HLS codebase includes several plugins under the namespace `Ide.Plugin.*`, th
 - The eval plugin, a code lens provider to evaluate code in comments
 - The retrie plugin, a code actions provider to execute retrie commands
 
-These plugins are "linked" in the `Main` module, so we will need to add our plugin there once we have defined it:
+I would recommend looking at the existing plugins for inspiration and reference.
+
+Plugins are "linked" in the `Main` module, so we will need to add our plugin there once we have defined it:
 
 ```haskell
 idePlugins = pluginDescToIdePlugins allPlugins
@@ -119,13 +130,14 @@ type RenameProvider = LSP.LspFuncs Config
                     -> IO (Either ResponseError WorkspaceEdit)
 ```
 
-Providers are functions that receive some inputs and produce an IO computation that returns either an error or some result. 
+Providers are functions that receive some inputs and produce an IO computation that returns either an error or some result.
 
-Plugins receive an `LSP.LspFuncs` value, which is a record of functions to perform LSP actions. Most plugins can safely ignore it, since the LSP interaction is automatically managed by HLS. Some use cases:
+All providers receive an `LSP.LspFuncs` value, which is a record of functions to perform LSP actions. Most providers can safely ignore this argument, since the LSP interaction is automatically managed by HLS.
+Some punctual use cases:
 - Progress reporting, for plugins that provide long running commands,
 - Custom user interactions via [message dialogs](https://microsoft.github.io/language-server-protocol/specification#window_showMessage).
 
-The second argument plugins receive is `IdeState`, which encapsulates all the ghcide state including the build graph. This allows to request arbitrary rule results: ghcide will perform all the computations needed, parallelizing and reusing previous results as necessary. Most rule types are defined in `Development.IDE.Core.RuleTypes` and are instances of the `RuleResult` type family. Some relevant examples include:
+The second argument plugins receive is `IdeState`, which encapsulates all the ghcide state including the build graph. This allows to request arbitrary rule results: ghcide will perform all the computations needed, parallelizing and reusing previous results as appropriate. Most rule types are defined in `Development.IDE.Core.RuleTypes` and are instances of the `RuleResult` type family. Some relevant rule types are:
 ```haskell
 -- | The parse tree for the file using GetFileContents
 type instance RuleResult GetParsedModule = ParsedModule
@@ -139,8 +151,7 @@ type instance RuleResult GhcSession = HscEnvEq
 -- | A GHC session preloaded with all the dependencies
 type instance RuleResult GhcSessionDeps = HscEnvEq
 
--- | Generate a ModSummary that has enough information to be used to get .hi and .hie files.
--- without needing to parse the entire source
+-- | A ModSummary that has enough information to be used to get .hi and .hie files.
 type instance RuleResult GetModSummary = ModSummary
 ```
 
@@ -159,9 +170,11 @@ There are three flavours of `use` combinators:
 
 ## LSP abstractions
 
-If you have used VSCode or any other LSP editor you are probably already familiar with the capabilities afforded by LSP. If not, check the [specification](https://microsoft.github.io/language-server-protocol/specification) for the full details. 
+If you have used VSCode or any other LSP editor you are probably already familiar with the capabilities afforded by LSP. If not, check the [specification](https://microsoft.github.io/language-server-protocol/specification) for the full details.
 
-Another good source of information is the [haskell-lsp-types](https://hackage.haskell.org/package/haskell-lsp-types) package, which contains a Haskell encoding of the protocol. In particular, code lenses are defined as follows:
+Another good source of information is the [haskell-lsp-types](https://hackage.haskell.org/package/haskell-lsp-types) package, which contains a Haskell encoding of the protocol.
+
+In Haskell, code lenses are defined as follows:
 ```haskell
 data CodeLens =
   CodeLens
@@ -199,7 +212,7 @@ descriptor plId = (defaultPluginDescriptor plId) {
 
 ### The command handler
 
-Our plugin provder thus has two components that need to be fleshed out. Let's start with the command provider, since it's the simplest of the two.
+Our plugin provider has two components that need to be fleshed out. Let's start with the command provider, since it's the simplest of the two.
 
 ```haskell
 importLensCommand :: PluginCommand
@@ -223,8 +236,8 @@ type CommandFunction a = LSP.LspFuncs Config
                        -> IO (Either ResponseError Value, Maybe (ServerMethod, ApplyWorkspaceEditParams))
 ```
 
-`CommandFunction` takes in the same `LspFuncs` and `IdeState` inputs as plugin providers do, together with a JSON encoded argument.
-I recommend checking the LSP spec in order to understand how commands work, but basically the LSP server (us) initially sends a command descriptor to the client, in this case as part of a code lens. When the client decides to execute the command on behalf of a user action (in this case a click on the code lens), the client sends this descriptor back to the LSP server which then proceeds to handle and execute the command. The latter part is implemented by the `commandFunc` field of our `PluginCommand` value.
+`CommandFunction` takes in the familiar `LspFuncs` and `IdeState` arguments, together with a JSON encoded argument.
+I recommend checking the LSP spec in order to understand how commands work, but briefly the LSP server (us) initially sends a command descriptor to the client, in this case as part of a code lens. When the client decides to execute the command on behalf of a user action (in this case a click on the code lens), the client sends this descriptor back to the LSP server which then proceeds to handle and execute the command. The latter part is implemented by the `commandFunc` field of our `PluginCommand` value.
 
 For our command, we are going to have a very simple handler that receives a diff (`WorkspaceEdit`) and returns it to the client:
 ```haskell
@@ -315,7 +328,8 @@ extractMinimalImports (Just (hsc)) (Just (tmrModule -> TypecheckedModule{..})) =
 extractMinimalImports _ _ = return ([], Nothing)
 ```
 
-The function `generateLens` implements the last piece of the algorithm, step 4, producing a code lens for an import statement that lacks an import list.
+The function `generateLens` implements the last piece of the algorithm, step 4, producing a code lens for an import statement that lacks an import list. Note how the code lens includes an `ImportCommandParams` value
+that contains a workspace edit that rewrites the import statement, as expected by our command provider.
 
 ```haskell
 -- | Given an import declaration, generate a code lens unless it has an explicit import list
@@ -353,6 +367,6 @@ generateLens pId uri minImports (L src imp)
 
 ## Wrapping up
 
-There's only one thing left to do at this point: "link" the plugin in the `Main` HLS module! 
+There's only one thing left to do at this point: "link" the plugin in the `Main` HLS module!
 
 The full code as used in this tutorial, including imports, can be found in [this Gist](https://gist.github.com/pepeiborra/49b872b2e9ad112f61a3220cdb7db967) as well as in this [branch](https://github.com/pepeiborra/ide/blob/imports-lens/src/Ide/Plugin/ImportLens.hs)
