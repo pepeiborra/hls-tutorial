@@ -1,5 +1,8 @@
 # Let’s write a Haskell Language Server plugin
 
+Haskell Language Server is an LSP server for the Haskell programming language. It builds on several previous efforts
+to create a Haskell IDE, you can find many more details on the history and architecture in the [IDE 2020](https://mpickering.github.io/ide/index.html) community page.
+
 In this article we are going to cover the creation of an HLS plugin from scratch: a code lens to display explicit import lists.
 Along the way we will learn about HLS, its plugin model, and the relationship with ghcide and LSP.
 
