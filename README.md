@@ -236,10 +236,11 @@ data PluginCommand = forall a. (FromJSON a) =>
 
 The meat is in the `commandFunc` field, which is of type `CommandFunction`, another type synonym from `LSP.Types`:
 ```haskell
-type CommandFunction a = LSP.LspFuncs Config
-                       -> IdeState
-                       -> a
-                       -> IO (Either ResponseError Value, Maybe (ServerMethod, ApplyWorkspaceEditParams))
+type CommandFunction a =
+  LSP.LspFuncs Config
+  -> IdeState
+  -> a
+  -> IO (Either ResponseError Value, Maybe (ServerMethod, ApplyWorkspaceEditParams))
 ```
 
 `CommandFunction` takes in the familiar `LspFuncs` and `IdeState` arguments, together with a JSON encoded argument.
