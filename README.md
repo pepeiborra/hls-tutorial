@@ -319,8 +319,8 @@ The details of the GHC api are not relevant to this tutorial, but the code is te
 
 ```haskell
 extractMinimalImports
-  :: Maybe (HscEnvEq)
-  -> Maybe (TcModuleResult)
+  :: Maybe HscEnvEq
+  -> Maybe TcModuleResult
   -> IO ([LImportDecl GhcRn], Maybe [LImportDecl GhcRn])
 extractMinimalImports (Just hsc)) (Just (tmrModule -> TypecheckedModule{..})) = do
     -- extract the original imports and the typechecking environment
