@@ -203,7 +203,7 @@ To keep things simple our plugin won't make use of the unresolved facility, embe
 ## The explicit imports plugin
 
 To provide code lenses, our plugin must define a code lens provider as well as a Command handler.
-The code at `Ide.Plugin.Eval` shows how the convenience `defaultPluginDescriptor` function is used
+The code at `Ide.Plugin.Example` shows how the convenience `defaultPluginDescriptor` function is used
 to bootstrap the plugin and how to add the desired providers:
 
 ```haskell
